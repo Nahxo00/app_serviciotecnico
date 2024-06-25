@@ -25,7 +25,7 @@
         </svg>
         Reparaciones
       </a>
-      <a href="#" class="flex items-center gap-2 px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-300">
+      <a href="./cliente.php" class="flex items-center gap-2 px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-300">
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-5 w-5">
           <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
           <circle cx="9" cy="7" r="4"></circle>
@@ -106,7 +106,6 @@
             <td class="px-6 py-4 whitespace-nowrap">15 de marzo, 2023</td>
             <td class="px-6 py-4 whitespace-nowrap"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Reparado</span></td>
             <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-              <a href="#" class="text-blue-600 hover:text-blue-900">Editar</a>
             </td>
           </tr>
         </tbody>
@@ -115,4 +114,9 @@
   </div>
 </div>
 </body>
+<head>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+</head>
+  
 </html>
