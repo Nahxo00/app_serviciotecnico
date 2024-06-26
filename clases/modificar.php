@@ -17,11 +17,11 @@ if ($accion == 1) {
         if ($id) {
             $sql = "UPDATE clientes SET nombre=?, direccion=?, telefono=? WHERE id_clientes=?";
             $stmt = $conexion->prepare($sql);
-            $stmt->execute(array($nombre, $direccion, $telefono $id_clientes));
+            $stmt->execute(array($nombre, $direccion, $telefono, $id_clientes));
         } else {
             $sql = "UPDATE clientes SET nombre=?, direccion=?, telefono=? WHERE id_clientes=?";
             $stmt = $conexion->prepare($sql);
-            $stmt->execute(array($nombre, $direccion, $telefono $id_clientes));
+            $stmt->execute(array($nombre, $direccion, $telefono, $id_clientes));
         }
     } else {
         $sql = "INSERT INTO clientes (nombre, direccion, telefono) VALUES (?,?,?)";

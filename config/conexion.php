@@ -3,7 +3,7 @@
     class Database {
 
         private $hostname = "localhost";
-        private $database = "app_serviciotecnico";
+        private $database = "app_servicio_tecnico";
         private $username = "root";
         private $password = "";
         private $charset = "utf8";
