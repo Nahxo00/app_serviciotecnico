@@ -1,50 +1,35 @@
 <?php
-require_once "../config/conexion.php";
+require '../config/conexion.php'; // Asegúrate de que esta ruta sea correcta
 
-$db = new Database();
-// Llamar al método conectar para obtener la conexión
-$conexion = $db->conectar();
+// Verifica si la solicitud es POST
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    // Obtén los datos del formulario
+    $id_reparacion = $_POST['id_reparacion'];
+    $estado = $_POST['estado'];
+    $dispositivo = $_POST['dispositivo'];
+    $observacion = $_POST['observacion'];
+    $fecha_termino = $_POST['fecha_termino'];
 
-$accion = isset($_POST['accion']) ? intval($_POST['accion']) : 0;
+    // Conecta a la base de datos
+    $database = new Database();
+    $pdo = $database->conectar();
 
-if ($accion == 1) {
-    $nombre = $_POST['nombre'];
-    $direccion = $_POST['direccion'];
-    $telefono = $_POST['telefono'];
-    $id_clientes = intval($_POST['id']);
+    // Prepara la consulta de actualización
+    $sql = "UPDATE reparaciones SET estado = :estado, dispositivo = :dispositivo, observacion = :observacion, fecha_termino = :fecha_termino WHERE id_reparacion = :id_reparacion";
+    $stmt = $pdo->prepare($sql);
 
-    if ($id > 0) {
-        if ($id) {
-            $sql = "UPDATE clientes SET nombre=?, direccion=?, telefono=? WHERE id_clientes=?";
-            $stmt = $conexion->prepare($sql);
-            $stmt->execute(array($nombre, $direccion, $telefono, $id_clientes));
-        } else {
-            $sql = "UPDATE clientes SET nombre=?, direccion=?, telefono=? WHERE id_clientes=?";
-            $stmt = $conexion->prepare($sql);
-            $stmt->execute(array($nombre, $direccion, $telefono, $id_clientes));
-        }
+    // Vincula los parámetros
+    $stmt->bindParam(':id_reparacion', $id_reparacion, PDO::PARAM_INT);
+    $stmt->bindParam(':estado', $estado);
+    $stmt->bindParam(':dispositivo', $dispositivo);
+    $stmt->bindParam(':observacion', $observacion);
+    $stmt->bindParam(':fecha_termino', $fecha_termino);
+
+    // Ejecuta la consulta
+    if ($stmt->execute()) {
+        echo json_encode(['status' => 'success']);
     } else {
-        $sql = "INSERT INTO clientes (nombre, direccion, telefono) VALUES (?,?,?)";
-        $stmt = $conexion->prepare($sql);
-        $stmt->execute(array($nombre, $direccion, $telefono));
+        echo json_encode(['status' => 'error']);
     }
-
-
-} elseif ($accion == 0) {
-    if (!isset($_POST['id'])) {
-        echo json_encode(['error' => 'ID no proporcionado']);
-        exit();
-    }
-
-    $id = intval($_POST['id']);
-
-    $stmt = $conexion->prepare("SELECT * FROM clientes WHERE id=?");
-    $stmt->setFetchMode(PDO::FETCH_ASSOC);
-    $stmt->execute(array($id));
-    $row = $stmt->fetch();
-
-    echo json_encode($row);
-    exit;
 }
-
 ?>

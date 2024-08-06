@@ -5,7 +5,7 @@ $db = new Database();
 $conexion = $db->conectar();
 
 // Consulta SQL para obtener los datos requeridos
-$sql = "SELECT r.id_reparacion, c.nombre, c.apellido, r.estado, r.dispositivo, r.fecha_inicio
+$sql = "SELECT r.id_reparacion, c.nombre, c.apellido, r.estado, r.dispositivo, r.fecha_inicio, r.id_cliente, r.observacion
         FROM reparaciones r
         INNER JOIN clientes c ON r.id_cliente = c.id_cliente
         ORDER BY r.id_reparacion DESC";
@@ -15,45 +15,49 @@ $resultado = $conexion->query($sql);
 $sqlClientes = "SELECT id_cliente, nombre, apellido FROM clientes";
 $resultadoClientes = $conexion->query($sqlClientes);
 
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-
-if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['fecha_inicio'])) {
-    // Acceder al valor de 'fecha_inicio'
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fecha_inicio'])) {
     $fecha_inicio = $_POST['fecha_inicio'];
+    $id_cliente = isset($_POST['id_cliente']) ? $_POST['id_cliente'] : null;
+    $estado = $_POST['estado'];
+    $dispositivo = $_POST['dispositivo'];
+    $observacion = $_POST['observacion'];
+    $id_reparacion = isset($_POST['id_reparacion']) ? $_POST['id_reparacion'] : null;
 
-  $id_cliente = $_POST['id_cliente'];
-  $estado = $_POST['estado'];
-  $dispositivo = $_POST['dispositivo'];
-  $observacion = $_POST['observacion'];
-  $id_reparacion = isset($_POST['id']) ? $_POST['id'] : null;
+    if ($id_cliente !== null) {
+        if ($id_reparacion) {
+            // Actualizar un registro existente
+            $sql = "UPDATE reparaciones SET id_cliente = :id_cliente, estado = :estado, dispositivo = :dispositivo, observacion = :observacion, fecha_inicio = :fecha_inicio WHERE id_reparacion = :id_reparacion";
+            $query = $conexion->prepare($sql);
+            $query->bindParam(':id_reparacion', $id_reparacion);
+        } else {
+            // Insertar un nuevo registro
+            $sql = "INSERT INTO reparaciones (id_cliente, estado, dispositivo, observacion, fecha_inicio) VALUES (:id_cliente, :estado, :dispositivo, :observacion, :fecha_inicio)";
+            $query = $conexion->prepare($sql);
+        }
 
-  if ($id_reparacion) {
-      $sql = "UPDATE reparaciones SET id_cliente = :id_cliente, estado = :estado, dispositivo = :dispositivo, observacion = :observacion , fecha_inicio = :fecha_inicio WHERE id_reparacion = :id";
-      $query = $conexion->prepare($sql);
-      $query->bindParam(':id', $id_reparacion);
-  } else {
-      $sql = "INSERT INTO reparaciones(id_cliente, estado, dispositivo, observacion, fecha_inicio) VALUES (:id_cliente, :estado, :dispositivo, :observacion, :fecha_inicio)";
-      $query = $conexion->prepare($sql);
-  }
-  $query->bindParam(':id_cliente', $id_cliente);
-  $query->bindParam(':fecha_inicio', $fecha_inicio);
-  $query->bindParam(':estado', $estado);
-  $query->bindParam(':dispositivo', $dispositivo);
-  $query->bindParam(':observacion', $observacion);
+        // Vinculación de parámetros
+        $query->bindParam(':id_cliente', $id_cliente);
+        $query->bindParam(':fecha_inicio', $fecha_inicio);
+        $query->bindParam(':estado', $estado);
+        $query->bindParam(':dispositivo', $dispositivo);
+        $query->bindParam(':observacion', $observacion);
 
-
-  $query->execute();
-
-  header('Location: reparaciones.php');
-  exit;
+        // Ejecutar la consulta
+        if ($query->execute()) {
+            // Redirigir después de la operación
+            header('Location: reparaciones.php');
+            exit;
+        } else {
+            $errorInfo = $query->errorInfo();
+            echo "Error al ejecutar la consulta: " . $errorInfo[2];
+        }
+    } else {
+        echo "El campo id_cliente es obligatorio.";
+    }
 }
-}
-
 
 // Cerrar conexión
 $conexion = null;
-
 ?>
 
 <!DOCTYPE html>
@@ -63,13 +67,14 @@ $conexion = null;
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - Reparaciones</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    
     <script src="./assets/tailwind.config.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
 </head>
 
 
-<body>
 <div class="min-h-screen flex">
   <!-- Sidebar -->
   <div class="w-64 bg-gray-200 p-4">
@@ -153,9 +158,8 @@ $conexion = null;
                     </form>
                 </div>
                 <!-- Button de insertar datos -->
-                <button class="bg-blue-500 hover:bg-blue-700 text-white p-1.5 border border-blue-700 rounded mb-2" id="abrirReparaciones">
-                          <i class="fas fa-plus fa-sm"></i> Nuevo
-                </button>
+                <button class="bg-blue-500 hover:bg-blue-700 text-white p-1.5 border border-blue-700 rounded mb-2"        id="abrirReparaciones">
+                <i class="fas fa-file-circle-plus"></i>
                 <!-- --------------------------------- -->
                 <div class="w-full md:w-auto flex flex-col md:flex-row space-y-2 md:space-y-0 items-stretch md:items-center justify-end md:space-x-3 flex-shrink-0">
                     <button type="button" class="flex items-center justify-center text-white bg-primary-700 hover:bg-primary-800 focus:ring-4 focus:ring-primary-300 font-medium rounded-lg text-sm px-4 py-2 dark:bg-primary-600 dark:hover:bg-primary-700 focus:outline-none dark:focus:ring-primary-800">
@@ -234,23 +238,34 @@ $conexion = null;
                     <?php
                         // Verificar si hay resultados
                         if ($resultado->rowCount() > 0) {
-                          // Inicio del bucle para mostrar cada fila de la tabla
-                          while ($fila = $resultado->fetch(PDO::FETCH_ASSOC)) {
-                              echo "<tr>";
-                              echo "<td class='px-4 py-3'>" . $fila['id_reparacion'] . "</td>";
-                              echo "<td class='px-4 py-3'>" . $fila['nombre'] . "</td>";
-                              echo "<td class='px-4 py-3'>" . $fila['dispositivo'] . "</td>";
-                              echo "<td class='px-4 py-3'>" . $fila['fecha_inicio'] . "</td>";
-                              echo "<td class='px-4 py-3'>" . $fila['estado'] . "</td>";
-                              echo "<td class='px-4 py-3'>
-                                      
-                                    </td>";
-                              echo "</tr>";
-                          }
-                        } else {
-                          echo "<tr><td colspan='6' class='text-center py-4'>No hay reparaciones registradas.</td></tr>";
+                            // Inicio del bucle para mostrar cada fila de la tabla
+                            while ($fila = $resultado->fetch(PDO::FETCH_ASSOC)) {
+                                echo "<tr>";
+                                echo "<td class='px-4 py-3'>" . $fila['id_reparacion'] . "</td>";
+                                echo "<td class='px-4 py-3'>" . $fila['nombre'] . "</td>";
+                                echo "<td class='px-4 py-3'>" . $fila['dispositivo'] . "</td>";
+                                echo "<td class='px-4 py-3'>" . $fila['fecha_inicio'] . "</td>";
+                                echo "<td class='px-4 py-3'>" . $fila['estado'] . "</td>";
+                                echo "<td class='px-4 py-3'>";
+                                echo "<div class='flex gap-2'>";
+                        
+                                // Botón para editar
+                                echo "<button type='button' onclick=\"abrirModal('{$fila['id_reparacion']}', '{$fila['estado']}', '{$fila['dispositivo']}', '{$fila['observacion']}')\" class='text-white bg-blue-500 hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800'>";
+                                echo "<i class='fa-solid fa-edit'></i>";
+                                echo "</button>";
+                        
+                                // Botón para eliminar
+                                echo "<button type='button' class='text-white bg-red-500 hover:bg-red-700 focus:outline-none focus:ring-4 focus:ring-red-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-red-600 dark:hover:bg-red-700 dark:focus:ring-red-800' data-modal-show='popup-modal' data-id-reparacion='{$fila['id_reparacion']}'>";
+                                echo "<i class='fa-solid fa-trash'></i>";
+                                echo "</button>";
+                        
+                                echo "</div>";
+                                echo "</td>";
+                                echo "</tr>";
+                            }
                         }
-
+                        
+                        
                       ?>
                     </tbody>
                 </table>
@@ -305,8 +320,6 @@ $conexion = null;
   </div>
 </div>
 
-
-
 <!-- Insertar modal -->
 <div id="reparaciones" tabindex="-1" aria-hidden="true" class="flex hidden overflow-y-auto overflow-x-hidden fixed z-50 inset-0 justify-center items-center align-center w-full max-h-full bg-black bg-opacity-50">
     <div class="relative p-4 w-full max-w-md max-h-full">
@@ -339,10 +352,9 @@ $conexion = null;
                                 }
                             ?>
                         </select>
+
+
                     </div>
-
-
-
                     <div class="col-span-2">
                           <label for="estado" class="block text-gray-700">Estado</label>
                             <select id="estado" name="estado" class="block w-full mt-1 border-gray-300 rounded-md shadow-sm">
@@ -372,22 +384,191 @@ $conexion = null;
         </div>
     </div>
 </div> 
+<!-- ---------------------------------------------------------------------------------------------------------------------------- -->
+<!-- Modificar Modal -->
+<div id="editIdReparacionModal" tabindex="-1" aria-hidden="true" class="flex hidden overflow-y-auto overflow-x-hidden fixed z-50 inset-0 justify-center items-center align-center w-full max-h-full bg-black bg-opacity-50">
+    <div class="relative p-4 w-full max-w-md max-h-full">
+        <!-- Modal content -->
+        <div class="relative bg-white rounded-lg shadow dark:bg-gray-700">
+            <!-- Modal header -->
+            <div class="flex items-center justify-between p-4 md:p-5 border-b rounded-t dark:border-gray-600">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                    Modificar Reparación
+                </h3>
+                <button type="button" class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center dark:hover:bg-gray-600 dark:hover:text-white" onclick="cerrarModal()">
+                    <svg class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
+                        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"/>
+                    </svg>
+                    <span class="sr-only">Cerrar modal</span>
+                </button>
+            </div>
+            <!-- Modal body -->
+            <form id="editIdReparacionForm" class="p-4 md:p-5">
+                <!-- Campo oculto para ID de reparación -->
+                <input type="hidden" id="hiddenEditIdReparacion" name="id_reparacion">
 
+                <div class="grid gap-4 mb-4 grid-cols-2">
+                    <div class="col-span-2">
+                        <label for="estado" class="block text-gray-700">Estado</label>
+                        <select id="estado" name="estado" class="block w-full mt-1 border-gray-300 rounded-md shadow-sm">
+                            <option value="Pendiente">Pendiente</option>
+                            <option value="En Proceso">En Proceso</option>
+                            <option value="Completado">Completado</option>
+                        </select>
+                    </div>
 
+                    <div class="col-span-2">
+                        <label for="dispositivo" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Dispositivo</label>
+                        <input type="text" name="dispositivo" id="dispositivo" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500" placeholder="Ingresar dispositivo" required="">
+                    </div>
+
+                    <div class="col-span-2">
+                        <label for="observacion" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Observación</label>
+                        <input type="text" name="observacion" id="observacion" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500" placeholder="Ingresar observación" required="">
+                    </div>
+                    <div class="col-span-2">
+                          <label for="fecha_termino" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Fecha de Termino</label>
+                          <input type="datetime-local" name="fecha_termino" id="fecha_termino" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500" placeholder="Seleccionar fecha y hora" required="">
+                    </div>
+                </div>
+                <button type="submit" class="text-white inline-flex justify-center bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 w-full">
+                    Modificar
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- --------------------------------------------------------------------------------------------------------------------------------- -->
+
+<!-- Modal de eliminar -->
+<div id="popup-modal" tabindex="-1" class="flex hidden overflow-y-auto overflow-x-hidden fixed z-50 inset-0 justify-center items-center align-center w-full max-h-full bg-black bg-opacity-50">
+    <div class="relative p-4 w-full max-w-md max-h-full">
+        <div class="relative bg-white rounded-lg shadow dark:bg-gray-700">
+            <button type="button" class="absolute top-3 end-2.5 text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center dark:hover:bg-gray-600 dark:hover:text-white" data-modal-hide="popup-modal">
+                <svg class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
+                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"/>
+                </svg>
+                <span class="sr-only">Close modal</span>
+            </button>
+            <div class="p-4 md:p-5 text-center">
+                <svg class="mx-auto mb-4 text-gray-400 w-12 h-12 dark:text-gray-200" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 20">
+                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 11V6m0 8h.01M19 10a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
+                </svg>
+                <h3 class="mb-5 text-lg font-normal text-gray-500 dark:text-gray-400">Deseas borrar el siguiente registro?</h3>
+                <button id="confirmarEliminar" data-id="<?php echo $data['id']; ?>" class="text-white bg-red-600 hover:bg-red-800 focus:ring-4 focus:outline-none focus:ring-red-300 dark:focus:ring-red-800 font-medium rounded-lg text-sm inline-flex items-center px-5 py-2.5 text-center">
+                    Si, acepto
+                </button>
+                <button data-modal-hide="popup-modal" type="button" class="py-2.5 px-5 ms-3 text-sm font-medium text-gray-900 focus:outline-none bg-white rounded-lg border border-gray-200 hover:bg-gray-100 hover:text-blue-700 focus:z-10 focus:ring-4 focus:ring-gray-100 dark:focus:ring-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600 dark:hover:text-white dark:hover:bg-gray-700">No, cancelar</button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- ------------------------------------------------------------------------------------------------------------------------------------------------------- -->
 
 </body>
 
 <script>
-    $(document).ready(function() {
-        $('#abrirReparaciones').click(function () {
-            $('#reparaciones').removeClass('hidden');
-        });
+  $(document).ready(function() {
+    // Abrir el modal
+    $('#abrirReparaciones').click(function () {
+      $('#reparaciones').removeClass('hidden');
     });
 
-    function cerrarModal() {
+    // Cerrar el modal
+    $('#cerrarReparaciones').click(function () {
+      $('#reparaciones').addClass('hidden');
+    });
+
+    // Cerrar el modal al hacer clic fuera de él
+    $(window).click(function(event) {
+      if ($(event.target).is('#reparaciones')) {
         $('#reparaciones').addClass('hidden');
-    }   
+      }
+    });
+  });
 </script>
+
+<!-- ---------------------------------------------------------------------------------------------------------------------- -->
+
+
+<script>
+    function abrirModal(idReparacion, estado, dispositivo, observacion, fecha_termino) {
+        // Establece los valores en el modal
+        document.getElementById('hiddenEditIdReparacion').value = idReparacion;
+        document.getElementById('estado').value = estado;
+        document.getElementById('dispositivo').value = dispositivo;
+        document.getElementById('observacion').value = observacion;
+        document.getElementById('fecha_termino').value = fecha_termino;
+
+        // Muestra el modal
+        document.getElementById('editIdReparacionModal').classList.remove('hidden');
+    }
+
+    function cerrarModal() {
+        // Oculta el modal
+        document.getElementById('editIdReparacionModal').classList.add('hidden');
+    }
+
+    document.getElementById('editIdReparacionForm').addEventListener('submit', function(event) {
+    event.preventDefault();
+
+    // Obtén los datos del formulario
+    var formData = new FormData(this);
+
+    // Envia los datos al servidor
+    fetch('./clases/modificar.php', {
+        method: 'POST',
+        body: formData
+    }).then(response => response.json())
+      .then(data => {
+          if (data.status === 'success') {
+              // Recarga la página para reflejar los cambios
+              window.location.reload();
+              header('Location: reparaciones.php');
+          } else {
+              alert('Error al modificar la reparación');
+          }
+      })
+});
+
+</script>
+
+
+<!-- --------------------------------------------------------------------------------------------- -->
+
+<!-- Funcion de eliminar -->
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  // Maneja la apertura del modal y establece el ID del registro a eliminar
+  document.querySelectorAll('[data-modal-show]').forEach(button => {
+    button.addEventListener('click', function () {
+      const modalId = this.getAttribute('data-modal-show');
+      const idReparacion = this.getAttribute('data-id-reparacion');
+      document.getElementById('confirmarEliminar').setAttribute('data-id', idReparacion);
+      document.getElementById(modalId).classList.remove('hidden');
+    });
+  });
+
+  // Maneja el cierre del modal
+  document.querySelectorAll('[data-modal-hide]').forEach(button => {
+    button.addEventListener('click', function () {
+      const modalId = this.getAttribute('data-modal-hide');
+      document.getElementById(modalId).classList.add('hidden');
+    });
+  });
+
+  // Maneja la confirmación de eliminación
+  document.getElementById('confirmarEliminar').addEventListener('click', function () {
+    const idReparacion = this.getAttribute('data-id');
+    const url = `clases/eliminar.php?accion=pro&id=${idReparacion}`;
+    window.location.href = url; // Redirige para eliminar el registro
+  });
+
+
+});
+</script>
+
 
 
 <head>

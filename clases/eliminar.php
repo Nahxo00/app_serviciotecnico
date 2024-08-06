@@ -7,16 +7,16 @@ $db = new Database();
 $conexion = $db->conectar();
 
 if (isset($_GET['accion'], $_GET['id'])) {
-    $id = $_GET['id'];
+    $id_reparacion = $_GET['id'];
     if ($_GET['accion'] == 'pro') {
-        $query = $conexion->prepare("DELETE FROM clientes WHERE id_cliente = :id");
-        $query->bindParam(':id', $id);
+        $query = $conexion->prepare("DELETE FROM reparaciones WHERE id_reparacion = :id");
+        $query->bindParam(':id', $id_reparacion);
         $query->execute();
-        if ($query) {
-            header('Location: ../cliente.php');
+        if ($query->rowCount() > 0) {
+            header('Location: ../reparaciones.php');
             exit; // Asegúrate de terminar la ejecución después de redirigir
         } else {
-            echo "Error al eliminar cliente.";
+            echo "Error al eliminar registro.";
         }
     }
 }
